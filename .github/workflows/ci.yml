@@ -38,7 +38,9 @@ concurrency:
 jobs:
 
   build-and-test:
-    name: dbt build + 91 tests + sqlfluff lint
+    # No job-level `name:` here on purpose — GitHub reports the check status
+    # under the job ID (`build-and-test`) when no display name is set, which
+    # is what the branch-protection ruleset on `main` waits for.
     runs-on: ubuntu-latest
 
     steps:
