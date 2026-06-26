@@ -62,6 +62,19 @@ models:
           official_rent_monthly_gbp / default_monthly_net_income_gbp. Above
           ~0.30 means rent exceeds the common 30% affordability guideline for
           the default income scenario.
+      - name: epc_median_rating
+        description: >
+          Median EPC band (A best - G worst) of certificates in the area,
+          derived from the median energy-efficiency score. Null when no EPC
+          certificates matched the area.
+        tests:
+          - accepted_values:
+              arguments:
+                values: ['A', 'B', 'C', 'D', 'E', 'F', 'G']
+      - name: epc_certificate_count
+        description: >
+          Number of EPC certificates matched to the area — confidence indicator
+          for epc_median_rating. Null when none matched.
       - name: flood_risk_flag
         description: Placeholder until flood data is loaded.
         tests:

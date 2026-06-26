@@ -49,6 +49,33 @@ models:
         tests:
           - not_null
 
+  - name: stg_epc__certificates
+    description: |
+      Domestic EPC certificate staging interface for the energy profile layer.
+      Reads the committed ref_epc_sample fixture by default, or the full
+      raw_epc.certificates source with `--vars 'epc_source: bulk'`.
+      Grain: one row per certificate.
+    columns:
+      - name: postcode
+        description: Normalised full postcode (joins to dim_postcode_geography).
+        tests:
+          - not_null
+      - name: current_energy_rating
+        description: Energy efficiency band A (best) to G (worst).
+        tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['A', 'B', 'C', 'D', 'E', 'F', 'G']
+      - name: current_energy_efficiency
+        description: SAP energy efficiency score, 1-100.
+        tests:
+          - not_null
+          - dbt_expectations.expect_column_values_to_be_between:
+              arguments:
+                min_value: 1
+                max_value: 100
+
   - name: stg_landreg__transactions
     description: |
       One row per HM Land Registry Price Paid transaction. Types are cast,

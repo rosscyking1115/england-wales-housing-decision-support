@@ -97,3 +97,23 @@ sources:
         description: |
           One row per postcode in the prepared ONSPD snapshot, already shaped
           to the geography contract (same columns as ref_onspd_sample).
+
+  - name: epc
+    description: |
+      Domestic Energy Performance Certificates for England & Wales. Loaded by
+      scripts/load_epc.py from a local bulk snapshot prepared with
+      scripts/prepare_epc_seed.py. Only present (and only read) when building
+      with `--vars 'epc_source: bulk'`; the committed ref_epc_sample seed is the
+      CI fixture for the default build.
+
+      Source: https://get-energy-performance-data.communities.gov.uk/
+      Licence: Open Government Licence v3.0. Certificates may be expired or
+      superseded; bulk download requires a free GOV.UK One Login.
+    schema: raw_epc
+    loader: scripts/load_epc.py
+    tables:
+      - name: certificates
+        description: |
+          One row per certificate, shaped to the energy contract (same columns
+          as ref_epc_sample): postcode, current_energy_rating,
+          current_energy_efficiency, property_type, lodgement_date.

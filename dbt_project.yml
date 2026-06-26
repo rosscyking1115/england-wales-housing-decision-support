@@ -42,6 +42,11 @@ vars:
   # real user budget. A ratio above ~0.30 means rent exceeds the common 30%
   # affordability guideline for this scenario.
   default_monthly_net_income_gbp: 2500
+  # EPC source. 'fixture' uses the tiny committed ref_epc_sample seed (CI-safe);
+  # 'bulk' uses the full England & Wales certificates loaded by
+  # scripts/load_epc.py into raw_epc.certificates. Override locally:
+  #   dbt build --vars 'epc_source: bulk'
+  epc_source: 'fixture'
 
 # Default model materialisations by folder.
 # - staging: views (cheap, recompute on every run)

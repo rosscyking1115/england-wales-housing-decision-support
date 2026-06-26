@@ -7,10 +7,11 @@
 -- First decision-support mart.
 -- Grain: one row per MSOA area_id.
 --
--- This profile exposes Land Registry sale context and ONS local-authority
--- rent (with an affordability ratio), plus null/caveated placeholders for the
--- public-data layers still to come. That keeps the product honest: no crime,
--- EPC, flood, planning, or commute claims are made before those sources exist.
+-- This profile exposes Land Registry sale context, ONS local-authority rent
+-- (with an affordability ratio), and an EPC energy-efficiency profile, plus
+-- null/caveated placeholders for the layers still to come. That keeps the
+-- product honest: no crime, flood, planning, or commute claims are made before
+-- those sources exist.
 
 with latest_market as (
 
@@ -27,6 +28,20 @@ with latest_market as (
     from {{ ref('dim_postcode_geography') }} as dpg
     left join {{ ref('fct_transactions') }} as fct
         on dpg.postcode = upper(trim(fct.postcode))
+    group by dpg.area_id
+
+),
+
+area_energy as (
+
+    select
+        dpg.area_id,
+        count(*) as epc_certificate_count,
+        median(epc.current_energy_efficiency) as epc_median_efficiency
+    from {{ ref('stg_epc__certificates') }} as epc
+    inner join {{ ref('dim_postcode_geography') }} as dpg
+        on epc.postcode = dpg.postcode
+    where dpg.area_id is not null
     group by dpg.area_id
 
 )
@@ -54,24 +69,31 @@ select
     round(
         rent.rent_monthly_gbp / {{ var('default_monthly_net_income_gbp') }}, 3
     ) as affordability_ratio,
-    cast(null as varchar) as epc_median_rating,
+    case
+        when area_energy.epc_median_efficiency >= 92 then 'A'
+        when area_energy.epc_median_efficiency >= 81 then 'B'
+        when area_energy.epc_median_efficiency >= 69 then 'C'
+        when area_energy.epc_median_efficiency >= 55 then 'D'
+        when area_energy.epc_median_efficiency >= 39 then 'E'
+        when area_energy.epc_median_efficiency >= 21 then 'F'
+        when area_energy.epc_median_efficiency >= 1 then 'G'
+    end as epc_median_rating,
+    area_energy.epc_certificate_count,
     cast(null as numeric) as crime_rate_per_1000,
     'unknown' as flood_risk_flag,
     0 as planning_constraint_count,
     cast(null as numeric) as commute_minutes_sample,
     'low' as confidence_level,
-    case
-        when rent.rent_monthly_gbp is not null
-            then concat(
-                'Land Registry sale context and ONS ',
-                rent.rent_grain,
-                ' rent loaded; EPC, crime, flood, planning, and commute not loaded yet.'
-            )
-        else concat(
-            'Land Registry sale context loaded; no ONS rent matched for this ',
-            'area; EPC, crime, flood, planning, and commute not loaded yet.'
-        )
-    end as confidence_notes,
+    concat(
+        'Loaded: Land Registry sales',
+        case when rent.rent_monthly_gbp is not null then ', ONS rent' else '' end,
+        case
+            when area_energy.epc_certificate_count is not null
+                then ', EPC energy'
+            else ''
+        end,
+        '. Not yet loaded: crime, flood, planning, commute.'
+    ) as confidence_notes,
     case
         when coalesce(latest_market.sales_count_latest_year, 0) = 0
             then concat(
@@ -106,4 +128,6 @@ left join latest_market
     on area.area_id = latest_market.area_id
 left join {{ ref('ref_ons_rent') }} as rent
     on area.local_authority_code = rent.area_code
+left join area_energy
+    on area.area_id = area_energy.area_id
 order by area.region, area.local_authority_name, area.area_name
