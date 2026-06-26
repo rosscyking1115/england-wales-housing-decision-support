@@ -6,8 +6,10 @@ models:
     description: |
       Canonical housing decision-support area dimension. MVP grain is MSOA,
       built from the postcode lookup (the committed fixture by default, or the
-      full national ONSPD snapshot with `--vars 'geo_source: onspd'`). ONS
-      pseudo-codes are excluded so every row is a real MSOA.
+      full national ONSPD snapshot with `--vars 'geo_source: onspd'`).
+      Restricted to England & Wales MSOAs (Scottish Intermediate Zones and ONS
+      pseudo-codes excluded); raw ONS codes are resolved to readable area /
+      local-authority / region names via the committed name seeds.
       Grain: one row per area_id.
     config:
       materialized: table

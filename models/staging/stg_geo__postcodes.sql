@@ -14,12 +14,15 @@ select
     upper(trim(postcode)) as postcode,
     upper(trim(postcode_outward)) as postcode_outward,
     upper(trim(postcode_area)) as postcode_area,
-    -- Drop ONS pseudo-codes (e.g. L99999999 / M99999999 for non-geographic or
-    -- unallocated postcodes): they are not real MSOAs, so treat them as no area
-    -- rather than letting them masquerade as recommendable neighbourhoods.
+    -- Keep only England & Wales MSOA codes (E02/W02). Land Registry covers
+    -- England & Wales, so Scottish Intermediate Zones (S02), NI geography, and
+    -- ONS pseudo-codes (e.g. L99999999) are treated as "no MSOA" rather than
+    -- masquerading as recommendable neighbourhoods.
     case
-        when nullif(trim(area_id), '') like '%99999999' then null
-        else nullif(trim(area_id), '')
+        when
+            nullif(trim(area_id), '') like 'E02%'
+            or nullif(trim(area_id), '') like 'W02%'
+            then nullif(trim(area_id), '')
     end as area_id,
     nullif(trim(area_name), '') as area_name,
     nullif(trim(lsoa_code), '') as lsoa_code,

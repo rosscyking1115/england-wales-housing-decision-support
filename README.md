@@ -31,7 +31,7 @@ over fragmented official UK datasets.
 |---|---|---|
 | Analytics-engineering spine (dbt + DuckDB + CI + docs) | ✅ Built | Inherited from the market-study project; hardened in this pivot |
 | Land Registry sale-market context | ✅ Built | 4.99M transactions, 2021–2025, tested marts |
-| Geography (MSOA `dim_area`, postcode bridge) | ✅ Built | Real ONSPD May 2026 lookup (2.73M postcodes, 8,598 MSOAs), 99.999% Land Registry coverage; committed fixture is the CI default |
+| Geography (MSOA `dim_area`, postcode bridge) | ✅ Built | Real ONSPD May 2026 lookup (2.73M postcodes → 7,264 England & Wales MSOAs), readable area/LA/region names, 99.999% Land Registry coverage; committed fixture is the CI default |
 | `rpt_area_profile_mvp` (first decision mart) | ✅ Prototype | Land Registry context + caveated null placeholders for other sources |
 | ONS rent / affordability | ⬜ Planned | Next source after geography is real — see `HOUSING_DECISION_SUPPORT_DATA_SOURCES.md` |
 | EPC, crime, flood, planning, commute layers | ⬜ Planned | Designed in the build plan; not loaded |
@@ -124,9 +124,15 @@ selected by the `geo_source` var:
 - **`fixture` (default):** the tiny committed `ref_onspd_sample` seed (6
   postcodes) — keeps CI and fresh clones fast and reproducible.
 - **`onspd`:** the full national ONS Postcode Directory snapshot
-  (**2.73M postcodes → 8,598 MSOAs**), giving **99.999% Land Registry postcode
-  coverage**. Enforced by `tests/assert_landreg_postcode_coverage.sql` (≥95%
-  threshold; a no-op on fixture builds).
+  (**2.73M postcodes → 7,264 England & Wales MSOAs**), giving **99.999% Land
+  Registry postcode coverage**. Enforced by
+  `tests/assert_landreg_postcode_coverage.sql` (≥95% threshold; a no-op on
+  fixture builds).
+
+Raw ONS codes are turned into readable names (`E02006959` → *Salford 033*,
+`E12000007` → *London*, `W99999999` → *Wales*) by joining three small committed
+seeds (`ref_msoa_names`, `ref_lad_names`, `ref_region_names`), extracted from the
+ONSPD documents with `scripts/prepare_geo_name_seeds.py`.
 
 The full ONSPD is large and licence-restricted, so it is never committed. Prepare
 and load a local snapshot, then build against it:
@@ -134,15 +140,19 @@ and load a local snapshot, then build against it:
 ```bash
 # 1. Normalise an official ONSPD CSV/ZIP into the geography contract (gitignored)
 python scripts/prepare_onspd_seed.py path/to/ONSPD.zip --member "Data/ONSPD_*_UK.csv" --snapshot-date 2026-05-01
-# 2. Load it into the warehouse as raw_geo.onspd_postcodes
+# 2. (one-time per ONSPD release) refresh the small name seeds
+python scripts/prepare_geo_name_seeds.py path/to/ONSPD.zip
+# 3. Load the postcode lookup into the warehouse as raw_geo.onspd_postcodes
 python scripts/load_geography.py
-# 3. Build the geography + decision layer against the real lookup
+# 4. Build the geography + decision layer against the real lookup
 dbt build --vars 'geo_source: onspd'
 ```
 
-Real geography handles the messy edges honestly: ONSPD no-grid-reference
-sentinel coordinates are nulled, and ONS pseudo-codes (e.g. `L99999999` for
-non-geographic postcodes) are treated as "no MSOA" rather than fake areas.
+Real geography handles the messy edges honestly: the grain is restricted to
+England & Wales MSOAs (matching Land Registry), so Scottish Intermediate Zones
+(`S02…`) and ONS pseudo-codes (e.g. `L99999999`) are treated as "no MSOA"
+rather than fake areas, and ONSPD no-grid-reference sentinel coordinates are
+nulled rather than used as real locations.
 
 ## How to run from a fresh clone
 
