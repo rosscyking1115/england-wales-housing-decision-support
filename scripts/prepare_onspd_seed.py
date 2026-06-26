@@ -70,6 +70,20 @@ COLUMN_ALIASES = {
     "termination_date": ("termination_date", "doterm", "dotermdate"),
 }
 
+# Regex fallbacks for the ONS date-stamped column convention used since ~2024
+# (e.g. msoa21cd, lsoa21cd, lad25cd, rgn25cd). Tried after the exact aliases
+# above. The capture group is a vintage/year — when several columns match
+# (msoa01cd / msoa11cd / msoa21cd), the highest is preferred so we pick the
+# current census or release vintage automatically as new years ship.
+COLUMN_PATTERNS = {
+    "area_id": (r"^msoa(\d{2})cd$", r"^msoa(\d{2})$"),
+    "area_name": (r"^msoa(\d{2})nm$",),
+    "lsoa_code": (r"^lsoa(\d{2})cd$", r"^lsoa(\d{2})$"),
+    "local_authority_code": (r"^lad(\d{2})cd$", r"^laua(\d{2})cd$"),
+    "local_authority_name": (r"^lad(\d{2})nm$", r"^laua(\d{2})nm$"),
+    "region": (r"^rgn(\d{2})cd$", r"^gor(\d{2})cd$"),
+}
+
 REQUIRED_LOGICAL_COLUMNS = (
     "postcode",
     "area_id",
@@ -119,6 +133,16 @@ def _resolve_column(
         match = normalised.get(_normalise_column_name(alias))
         if match:
             return match
+
+    candidates: list[tuple[int, str]] = []
+    for pattern in COLUMN_PATTERNS.get(logical_name, ()):
+        for normed, original in normalised.items():
+            found = re.match(pattern, normed)
+            if found:
+                vintage = int(found.group(1)) if found.groups() else -1
+                candidates.append((vintage, original))
+    if candidates:
+        return max(candidates, key=lambda item: item[0])[1]
 
     if required:
         aliases = ", ".join(COLUMN_ALIASES[logical_name])

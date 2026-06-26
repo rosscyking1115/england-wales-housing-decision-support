@@ -3,9 +3,11 @@ version: 2
 models:
   - name: stg_geo__postcodes
     description: |
-      ONS Postcode Directory-shaped staging fixture for the housing
-      decision-support geography layer. Grain: one row per postcode in the
-      lookup snapshot.
+      ONS Postcode Directory-shaped staging interface for the housing
+      decision-support geography layer. Reads the committed ref_onspd_sample
+      fixture by default, or the full national raw_geo.onspd_postcodes source
+      when built with `--vars 'geo_source: onspd'`. Grain: one row per postcode
+      in the lookup snapshot.
     columns:
       - name: postcode
         description: Normalised full postcode.
@@ -21,21 +23,23 @@ models:
         tests:
           - not_null
       - name: area_id
-        description: Canonical MSOA area key for the MVP recommendation grain.
-        tests:
-          - not_null
+        description: >
+          Canonical MSOA area key for the MVP recommendation grain. Null for
+          postcodes outside England & Wales (no MSOA) or retired postcodes.
       - name: latitude
-        description: Postcode centroid latitude.
+        description: >
+          Postcode centroid latitude. Null when the lookup has no grid
+          reference (ONSPD sentinel).
         tests:
-          - not_null
           - dbt_expectations.expect_column_values_to_be_between:
               arguments:
                 min_value: -90
                 max_value: 90
       - name: longitude
-        description: Postcode centroid longitude.
+        description: >
+          Postcode centroid longitude. Null when the lookup has no grid
+          reference (ONSPD sentinel).
         tests:
-          - not_null
           - dbt_expectations.expect_column_values_to_be_between:
               arguments:
                 min_value: -180

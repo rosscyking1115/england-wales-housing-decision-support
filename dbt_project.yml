@@ -28,6 +28,15 @@ vars:
   # to be treated as reliable rather than indicative. Guards small-sample
   # medians (e.g. a £13M area median derived from 2 prime-central sales).
   min_reliable_sale_sample: 5
+  # Geography source. 'fixture' uses the tiny committed ref_onspd_sample seed
+  # (CI-safe, reproducible). 'onspd' uses the full national lookup loaded by
+  # scripts/load_geography.py into raw_geo.onspd_postcodes. Override locally:
+  #   dbt build --vars 'geo_source: onspd'
+  geo_source: 'fixture'
+  # Minimum % of Land Registry rows (that have a postcode) which must map to an
+  # MSOA when building against the real ONSPD lookup. Enforced by
+  # tests/assert_landreg_postcode_coverage.sql (no-op on fixture builds).
+  min_postcode_coverage_pct: 95
 
 # Default model materialisations by folder.
 # - staging: views (cheap, recompute on every run)

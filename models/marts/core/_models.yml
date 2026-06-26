@@ -4,9 +4,10 @@ models:
 
   - name: dim_area
     description: |
-      Canonical housing decision-support area dimension. MVP grain is MSOA;
-      this fixture-backed first slice proves the contract before loading the
-      full official postcode lookup.
+      Canonical housing decision-support area dimension. MVP grain is MSOA,
+      built from the postcode lookup (the committed fixture by default, or the
+      full national ONSPD snapshot with `--vars 'geo_source: onspd'`). ONS
+      pseudo-codes are excluded so every row is a real MSOA.
       Grain: one row per area_id.
     config:
       materialized: table
@@ -89,37 +90,32 @@ models:
         tests:
           - not_null
       - name: area_id
-        description: MSOA area key.
+        description: >
+          MSOA area key. Null for postcodes outside England & Wales (no MSOA)
+          or retired postcodes; the relationship test ignores null keys.
         tests:
-          - not_null
           - relationships:
               arguments:
                 to: ref('dim_area')
                 field: area_id
       - name: lsoa_code
-        description: LSOA code where supplied by the lookup.
-        tests:
-          - not_null
+        description: LSOA code where supplied by the lookup. Null outside England & Wales.
       - name: local_authority_code
-        description: Local authority code.
-        tests:
-          - not_null
+        description: Local authority code. Null for postcodes with no allocated area.
       - name: region
-        description: Region context.
+        description: Region context. Coalesced to 'Unknown' when the lookup is blank.
         tests:
           - not_null
       - name: latitude
-        description: Postcode centroid latitude.
+        description: Postcode centroid latitude. Null when the lookup has no grid reference.
         tests:
-          - not_null
           - dbt_expectations.expect_column_values_to_be_between:
               arguments:
                 min_value: -90
                 max_value: 90
       - name: longitude
-        description: Postcode centroid longitude.
+        description: Postcode centroid longitude. Null when the lookup has no grid reference.
         tests:
-          - not_null
           - dbt_expectations.expect_column_values_to_be_between:
               arguments:
                 min_value: -180

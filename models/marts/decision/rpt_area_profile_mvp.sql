@@ -26,7 +26,7 @@ with latest_market as (
         ) as median_sale_price_gbp
     from {{ ref('dim_postcode_geography') }} as dpg
     left join {{ ref('fct_transactions') }} as fct
-        on dpg.postcode = fct.postcode
+        on dpg.postcode = upper(trim(fct.postcode))
     group by dpg.area_id
 
 )

@@ -23,7 +23,7 @@ over fragmented official UK datasets.
 
 - 📊 **dbt docs site (lineage + column catalogue):** https://rosscyking1115.github.io/uk-housing-decision-support/
 - 📈 **Streamlit dashboard (legacy market-study UI):** https://ross-uk-property-analytics.streamlit.app/
-- ✅ **CI status:** [![CI](https://github.com/rosscyking1115/uk-housing-decision-support/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/rosscyking1115/uk-housing-decision-support/actions/workflows/ci.yml) — every PR runs Python unit tests, Streamlit render/browser smoke tests, source freshness, `dbt build`, 157 data tests, dashboard extract smoke tests, and sqlfluff lint. Branch protection on `main` requires the check to pass before merging.
+- ✅ **CI status:** [![CI](https://github.com/rosscyking1115/uk-housing-decision-support/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/rosscyking1115/uk-housing-decision-support/actions/workflows/ci.yml) — every PR runs Python unit tests, Streamlit render/browser smoke tests, source freshness, `dbt build`, 150 data tests, dashboard extract smoke tests, and sqlfluff lint. Branch protection on `main` requires the check to pass before merging.
 
 ## Project status
 
@@ -31,7 +31,7 @@ over fragmented official UK datasets.
 |---|---|---|
 | Analytics-engineering spine (dbt + DuckDB + CI + docs) | ✅ Built | Inherited from the market-study project; hardened in this pivot |
 | Land Registry sale-market context | ✅ Built | 4.99M transactions, 2021–2025, tested marts |
-| Geography contract (MSOA `dim_area`, postcode bridge) | ✅ Proven on a fixture | 6-postcode `ref_onspd_sample`; real ONSPD snapshot not yet pinned |
+| Geography (MSOA `dim_area`, postcode bridge) | ✅ Built | Real ONSPD May 2026 lookup (2.73M postcodes, 8,598 MSOAs), 99.999% Land Registry coverage; committed fixture is the CI default |
 | `rpt_area_profile_mvp` (first decision mart) | ✅ Prototype | Land Registry context + caveated null placeholders for other sources |
 | ONS rent / affordability | ⬜ Planned | Next source after geography is real — see `HOUSING_DECISION_SUPPORT_DATA_SOURCES.md` |
 | EPC, crime, flood, planning, commute layers | ⬜ Planned | Designed in the build plan; not loaded |
@@ -93,10 +93,10 @@ flowchart LR
 |---|---|---|
 | Warehouse | **DuckDB** | Free, zero-ops, single-file, runs in CI. The whole 5-year warehouse fits in ~200 MB; queries return in milliseconds. |
 | Transform | **dbt-core 1.11** + **dbt-duckdb 1.10** | Industry-standard analytics-engineering tooling, declared grains, tested marts, lineage. |
-| Tests | **Built-in** + **dbt-utils** + **dbt-expectations** + **singular** | Row-shape, value-shape, and named-hypothesis tests. 157 data tests + 1 source-freshness check. |
+| Tests | **Built-in** + **dbt-utils** + **dbt-expectations** + **singular** | Row-shape, value-shape, and named-hypothesis tests. 150 data tests + 1 source-freshness check. |
 | Docs | `dbt docs` → **GitHub Pages** | Free hosting, lineage graph, column-level catalogue (`.github/workflows/docs.yml`). |
 | App | **Streamlit** | Python-native, read-only DuckDB connection, free Community Cloud hosting. The renter-facing decision workflow (Phase 5) will replace the current chart dashboard. |
-| CI | **GitHub Actions** | `ci.yml` runs unit tests, Streamlit smoke tests, source freshness, `dbt build`, 157 data tests, dashboard extract smoke, and sqlfluff lint on every PR. `docs.yml` publishes dbt docs to Pages. Branch protection on `main` gates merges. |
+| CI | **GitHub Actions** | `ci.yml` runs unit tests, Streamlit smoke tests, source freshness, `dbt build`, 150 data tests, dashboard extract smoke, and sqlfluff lint on every PR. `docs.yml` publishes dbt docs to Pages. Branch protection on `main` gates merges. |
 | Lint | **sqlfluff 4.1** + dbt templater | Wired via `pre-commit` (local) and as a hard CI gate. |
 
 `requirements.txt` pins are verified against PyPI for Python 3.13 (`cp313`) wheels
@@ -107,31 +107,42 @@ so a fresh clone needs no source builds — which matters on Windows.
 | Layer | Count | What it catches |
 |---|---|---|
 | Source freshness | 1 | Stale upstream data (warn if no rows newer than 35 days) |
-| Built-in row-shape (`not_null`, `unique`, `accepted_values`, `relationships`) | 65 | Schema bugs, FK orphans, enum drift |
+| Built-in row-shape (`not_null`, `unique`, `accepted_values`, `relationships`) | 57 | Schema bugs, FK orphans, enum drift |
 | `dbt-utils` (`expression_is_true`, `unique_combination_of_columns`) | 8 | Sign / range invariants, multi-column uniqueness |
 | `dbt-expectations` (range, regex, length, distinct, quantile, row count) | 7 | Type-cast bugs, statistical drift, format regressions |
-| Singular (`tests/assert_*.sql`) | 12 | Domain anomalies — non-vacuous YoY, date-spine coverage, area-profile market-match and source-caveat guards |
-| **Total** | **157** | All passing on every `dbt build`; source freshness is a separate CI gate |
+| Singular (`tests/assert_*.sql`) | 14 | Domain anomalies — non-vacuous YoY, date-spine coverage, area-profile market-match/source-caveat/small-sample guards, and Land Registry → MSOA coverage |
+| **Total** | **150** | All passing on every `dbt build`; source freshness is a separate CI gate |
 
-## Geography contract (current limitation)
+## Geography
 
 Decision support needs finer geography than the legacy postcode-area region join.
-The MVP grain is **MSOA**. The contract is proven — `stg_geo__postcodes` →
-`dim_postcode_geography` → `dim_area`, with `rpt_area_profile_mvp` joining Land
-Registry sale context onto areas — but it currently runs on the tiny committed
-`ref_onspd_sample` fixture (6 postcodes), **not** a national lookup.
+The MVP grain is **MSOA**: `stg_geo__postcodes` → `dim_postcode_geography` →
+`dim_area`, with `rpt_area_profile_mvp` joining Land Registry sale context onto
+areas. Two interchangeable sources sit behind the same column contract,
+selected by the `geo_source` var:
 
-To prepare a real local snapshot without committing the large upstream file,
-normalise an official ONSPD-style CSV/ZIP into the same column contract:
+- **`fixture` (default):** the tiny committed `ref_onspd_sample` seed (6
+  postcodes) — keeps CI and fresh clones fast and reproducible.
+- **`onspd`:** the full national ONS Postcode Directory snapshot
+  (**2.73M postcodes → 8,598 MSOAs**), giving **99.999% Land Registry postcode
+  coverage**. Enforced by `tests/assert_landreg_postcode_coverage.sql` (≥95%
+  threshold; a no-op on fixture builds).
+
+The full ONSPD is large and licence-restricted, so it is never committed. Prepare
+and load a local snapshot, then build against it:
 
 ```bash
-python scripts/prepare_onspd_seed.py path/to/onspd.zip --member "Data/*.csv" --snapshot-date 2026-05-01
+# 1. Normalise an official ONSPD CSV/ZIP into the geography contract (gitignored)
+python scripts/prepare_onspd_seed.py path/to/ONSPD.zip --member "Data/ONSPD_*_UK.csv" --snapshot-date 2026-05-01
+# 2. Load it into the warehouse as raw_geo.onspd_postcodes
+python scripts/load_geography.py
+# 3. Build the geography + decision layer against the real lookup
+dbt build --vars 'geo_source: onspd'
 ```
 
-The default output is `data/raw/ref_onspd_normalized.csv` (gitignored). The next
-real milestone is to **pin the first official snapshot, load it behind the same
-interface, and measure Land Registry postcode coverage** (target: ≥95% of fact
-rows map to an `area_id`).
+Real geography handles the messy edges honestly: ONSPD no-grid-reference
+sentinel coordinates are nulled, and ONS pseudo-codes (e.g. `L99999999` for
+non-geographic postcodes) are treated as "no MSOA" rather than fake areas.
 
 ## How to run from a fresh clone
 
@@ -156,7 +167,7 @@ dbt seed
 dbt build
 ```
 
-A fresh clone reproduces the full warehouse + 157 data tests in under 5 minutes
+A fresh clone reproduces the full warehouse + 150 data tests in under 5 minutes
 on a laptop. To re-publish docs locally: `dbt docs generate && dbt docs serve`.
 
 ## Roadmap
