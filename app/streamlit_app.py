@@ -13,7 +13,7 @@ import streamlit as st
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from _utils import (  # noqa: E402
+from _app_utils import (  # noqa: E402
     COMPONENTS,
     REGIONS,
     fmt_gbp,

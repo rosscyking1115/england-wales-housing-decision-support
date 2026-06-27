@@ -9,7 +9,7 @@ import streamlit as st
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from _utils import load_areas  # noqa: E402
+from _app_utils import load_areas  # noqa: E402
 
 st.set_page_config(page_title="Sources & caveats", page_icon="📋", layout="wide")
 st.title("📋 Sources & caveats")

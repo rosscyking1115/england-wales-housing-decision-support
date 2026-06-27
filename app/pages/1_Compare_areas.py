@@ -9,7 +9,7 @@ import streamlit as st
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from _utils import COMPONENTS, fmt_gbp, fmt_km, load_areas  # noqa: E402
+from _app_utils import COMPONENTS, fmt_gbp, fmt_km, load_areas  # noqa: E402
 
 st.set_page_config(page_title="Compare areas", page_icon="⚖️", layout="wide")
 st.title("⚖️ Compare areas")
