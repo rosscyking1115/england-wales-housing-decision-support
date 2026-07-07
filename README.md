@@ -61,6 +61,7 @@ see the roadmap.)
 | `models/` | dbt models: sources → staging → intermediate → marts (the engine). |
 | `seeds/`, `macros/`, `analyses/` | dbt seeds (fixtures + name lookups), reusable macros (`haversine_km`, `median_anchored`), ad-hoc analyses. |
 | `scripts/` | Data prep/load scripts for the real (non-fixture) sources. |
+| `orchestration/` | **Dagster asset graph** over the monthly refresh: ingestion (+ a pre-dbt data-quality gate) → dbt → decision extract. |
 | `tests/` | 197 dbt data tests + a dbt unit test + the API test suite (`tests/test_api.py`). |
 | `api/` | **FastAPI service** over the decision marts (resolve / search / listing-check / areas index / meta). `Dockerfile` + `fly.toml`. |
 | `web/` | **MoveIn website** — Next.js. Search, compare, listing checker, and ~7k programmatic area/town/region/rent pages. See [`web/README.md`](web/README.md) and [`web/DESIGN_BRIEF.md`](web/DESIGN_BRIEF.md). |
@@ -125,6 +126,41 @@ implemented in [`rpt_neighbourhood_score`](models/marts/decision/rpt_neighbourho
 
 Because it's one SQL transformation, the logic is covered by the same data tests
 as everything else (score bounds 0–100, coherence, coverage-vs-confidence).
+
+## Orchestration (Dagster)
+
+Land Registry data refreshes monthly, so the refresh is modelled as a
+**Dagster asset graph** ([`orchestration/`](orchestration/)) rather than a
+sequence of hand-run scripts: six ingestion assets (the Land Registry spine is
+downloaded automatically; five reference sources load from locally prepared
+files) feed the whole dbt project — loaded via `dagster-dbt`, so every model is
+an asset and every dbt test an asset check in the same lineage — and end at
+`decision_extract`, the slim DuckDB file the API ships.
+
+<p align="center">
+  <img src="docs-assets/dagster-lineage.svg" alt="Dagster asset lineage: six ingestion sources feeding the dbt transform layer and the decision extract" width="720">
+</p>
+
+Two design points worth reading the code for:
+
+- **A data-quality gate *before* dbt.** dbt tests run after load;
+  [`orchestration/checks.py`](orchestration/checks.py) validates the raw
+  Land Registry parquet *before* it enters the warehouse (row-count floor,
+  price/date null-flood, malformed-postcode rate) and **blocks the graph** on
+  failure — a truncated monthly drop stops at the front door instead of
+  propagating into the marts.
+- **The orchestrated build is the real refresh.** It parses *and* builds dbt
+  with the real-source vars, while plain `dbt build` keeps the fixture-seed
+  default for fast, reproducible CI. One `full_refresh` job runs the whole
+  pipeline (steps serialized — DuckDB is a single-writer file on Windows).
+
+Why Dagster and not Airflow: this is a set of data assets with lineage, not a
+task DAG — the asset/materialization model fits, and dbt lineage flows into the
+same graph. Why no deployed cron: the full source archives are large/licensed
+and refreshed manually, so the job runs on demand
+(`dagster dev -m orchestration.definitions`) — pretending a scheduler runs in
+production would be theatre. Details and trade-offs in
+[`orchestration/README.md`](orchestration/README.md).
 
 ## Running locally
 
