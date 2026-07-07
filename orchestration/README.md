@@ -67,9 +67,12 @@ disconnected from the graph. Plain `dbt build` (CI) keeps the fixture default.
 dagster dev -m orchestration.definitions      # UI at http://127.0.0.1:3000
 ```
 
-Assets are runnable **on demand** from the UI (Materialize). The local warehouse
-is fixture-only and full source files are large/licensed, so this is not cron'd
-in production — the graph models the refresh and runs when pointed at real data.
+The **`full_refresh` job** (Overview → Jobs) runs the whole pipeline in one
+launch — ingest → dbt → extract — with steps serialized (`max_concurrent: 1`)
+for the single-writer DuckDB file. Individual assets are also materializable
+on demand from the Lineage view. There is deliberately no deployed cron: the
+source archives behind the `prepared_*` assets are large/licensed and refreshed
+manually, so the refresh runs on demand.
 
 Once `decision_extract` writes `data/decision.duckdb`, committing that file to
 `main` triggers the existing deploy half of the refresh
