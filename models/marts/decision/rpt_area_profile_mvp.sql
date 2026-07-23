@@ -68,10 +68,16 @@ select
     pop.source_name as crime_population_source_name,
     cons.flood_risk_flag,
     cons.flood_postcode_pct,
-    coalesce(cons.flood_source_status, 'source_missing') as flood_source_status,
+    case
+        when area.area_id like 'W%' then 'not_covered'
+        else coalesce(cons.flood_source_status, 'source_missing')
+    end as flood_source_status,
     cons.flood_source_name,
     cons.planning_constraint_count,
-    coalesce(cons.planning_source_status, 'source_missing') as planning_source_status,
+    case
+        when area.area_id like 'W%' then 'not_covered'
+        else coalesce(cons.planning_source_status, 'source_missing')
+    end as planning_source_status,
     cons.planning_source_name,
     amenity.nearest_station_km,
     amenity.nearest_supermarket_km,

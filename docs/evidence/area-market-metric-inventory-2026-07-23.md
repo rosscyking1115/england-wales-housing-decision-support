@@ -84,7 +84,10 @@ point at `data/*.duckdb`.
 | `.\.venv\Scripts\sqlfluff.exe lint models --config C:\tmp\housing-h34-dbt\.sqlfluff` | PASS — dbt templater compiled the project; no lint findings. The temporary configuration points SQLFluff to the isolated profile. |
 | `.\.venv\Scripts\dbt.exe build --project-dir . --profiles-dir C:\tmp\housing-h34-dbt --target isolated --target-path C:\tmp\housing-h34-dbt\target --threads 1` | PASS — 264 pass, 0 errors, 0 warnings, 3 declared exposure no-ops (267 total); 23 models, 228 data tests, 16 seeds and 2 unit tests. The temporary warehouse is a local clone of the pre-existing warehouse because an empty isolated file has no `raw_landreg.transactions`; no source download occurred. |
 | `.\.venv\Scripts\dbt.exe docs generate --project-dir . --profiles-dir C:\tmp\housing-h34-dbt --target isolated --target-path C:\tmp\housing-h34-dbt\target --threads 1` | PASS — `catalog.json` written to `C:\tmp\housing-h34-dbt\target\catalog.json`. |
-| Full-geography temporary decision-mart build with `--vars "{geo_source: onspd}"` | Area-profile owner and its tests passed with 7,264 rows and reference year 2025. The combined run stopped on the unrelated existing score guard `assert_unsupported_jurisdictions_are_not_scored` (407 rows), so no score-table output from that run was exported. |
+| `.\.venv\Scripts\dbt.exe build --select +rpt_area_profile_mvp +rpt_neighbourhood_score --vars "{geo_source: onspd}" --project-dir . --profiles-dir C:\tmp\housing-h34-full-fix --target isolated_full --target-path C:\tmp\housing-h34-full-fix\target --threads 1` | PASS — 195 pass, 0 errors, 0 warnings. The previous 407-row guard failure was a coverage-status defect: Welsh MSOAs with no England-only fixture constraint row inherited `source_missing`. `rpt_area_profile_mvp` now declares both constraint statuses `not_covered` for `W%` MSOAs; the fact fields remain null and the score calculation is unchanged. |
+| `.\.venv\Scripts\dbt.exe build --project-dir . --profiles-dir C:\tmp\housing-h34-full-fix --target isolated_full --target-path C:\tmp\housing-h34-full-fix\target-fixture --threads 1` | PASS — 264 pass, 0 errors, 0 warnings, 3 declared exposure no-ops (267 total). This is the fresh default-fixture regression run after the status correction. |
+| `.\.venv\Scripts\sqlfluff.exe lint models --config C:\tmp\housing-h34-dbt\.sqlfluff` | PASS — dbt templater compiled the project and reported no lint findings after the status correction. |
+| `.\.venv\Scripts\dbt.exe docs generate --project-dir . --profiles-dir C:\tmp\housing-h34-full-fix --target isolated_full --target-path C:\tmp\housing-h34-full-fix\target-docs --threads 1` | PASS — `catalog.json` written to `C:\tmp\housing-h34-full-fix\target-docs\catalog.json`. |
 | Authorised committed-extract migration | PASS — after snapshot, added only `app.rpt_area_profile_mvp.sale_price_reference_year`; 7,264 rows, min/max 2025, 0 null. |
 | Real committed-extract API golden parity | PASS — `E02006959` returned £267,295 / 417 / 2025 / `reliable`; `E02003353` returned £528,000 / 291 / 2025 / `reliable`. |
 | `.\.venv\Scripts\python.exe -m unittest tests.test_api tests.test_api_market_contract` | PASS — 17 tests. |
@@ -99,9 +102,9 @@ outputs recorded above and that the hash of `data/decision.duckdb` is unchanged.
 The targeted web tests cover the sale-price evidence state formatter only;
 public website wording was intentionally left unchanged.
 
-Open item: the full-geography combined decision build exposes an unrelated
-unsupported-jurisdiction scoring failure. It was not folded into this
-area-market-only extract migration and requires a separately scoped diagnosis.
+The separately scoped full-geography diagnosis is resolved by the narrow
+jurisdiction-status correction above. It changes neither score inputs nor score
+weights, and it does not write the committed decision extract.
 
 **Independent Reviewer/QA outcome:** **PASS.** The reviewer confirmed that no
 rendered sale-price evidence copy remains in the website, ADR-001 reflects the
@@ -109,3 +112,10 @@ API/export transport contract while leaving presentation separately gated, and
 the pre-refresh extract matched `HEAD`. The post-authorisation migration is
 covered by the committed-extract API golden parity and API suite above. No
 regional report consumer was found in the API, website, extract, or exposures.
+
+**Independent Reviewer/QA outcome — full-geography guard:** **PASS.** The
+reviewer confirmed the status correction is limited to Welsh coverage semantics:
+non-Wales null handling remains `source_missing`, constraint facts and flood
+scoring are unchanged, and the isolated full-geography guard is satisfied. The
+reviewer independently rechecked the selected dbt lineage, `git diff --check`,
+and the unchanged `data/decision.duckdb` hash.
