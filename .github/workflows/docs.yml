@@ -11,7 +11,9 @@
 #   4. Download two years of Land Registry data (--sample, enough for YoY docs)
 #   5. Load it into DuckDB
 #   6. dbt source freshness
-#   7. dbt build (marts + 189 data tests against sample data — ~10s)
+#   7. dbt build (marts + the full data-test suite against sample data — ~10s).
+#      No count is written here on purpose: `dbt build` runs whatever the project
+#      defines, so a number in a comment can only go stale.
 #   8. dbt docs generate (manifest + catalog from the live warehouse)
 #   9. Upload target/ as a Pages artifact
 #   10. Deploy to GitHub Pages
@@ -83,7 +85,7 @@ jobs:
       - name: dbt seed
         run: dbt seed --target dev
 
-      - name: dbt build (warehouse + 189 data tests)
+      - name: dbt build (warehouse + full data-test suite)
         run: dbt build --target dev
 
       - name: dbt docs generate (produces manifest + catalog)

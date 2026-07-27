@@ -18,6 +18,17 @@ decision modelling, the tests, and the explainability layer.
 > area-data space is already well served (CrystalRoof, Plumplot, PostcodeCheck, …).
 > It's an end-to-end data stack built over official open data.
 >
+> **This is not positioned on transparency of scoring.** Transparent 0–100
+> neighbourhood composites already exist, and at least one publishes its full
+> component weights and gives the report away free. What is uncommon here is
+> narrower and purely a matter of format: a **multi-domain, small-area-grain,
+> open-code, reproducible** composite — the whole thing rebuilds from source with
+> one command and is tested at every layer. The closest open comparator,
+> [AHAH](https://data.geods.ac.uk/dataset/access-to-healthy-assets-hazards-ahah)
+> (v5.1, OGL, open code, 43,064 small areas across Great Britain), is scoped to
+> health. That is an absence of a *format*, not of a served need, and it is not a
+> claim that anyone is underserved.
+>
 > The website and repository now share one descriptive identity: **England &
 > Wales Housing Decision Support**. The repository slug is
 > `england-wales-housing-decision-support`.
@@ -58,8 +69,15 @@ frontend-agnostic and consumable; they are not the point.
 ```
 
 The transformation is specified by a versioned machine-readable contract and
-golden cases under [`contracts/`](contracts/). The dbt mart, API reweighting and
-TypeScript reweighting are kept in parity by tests.
+golden cases under [`contracts/`](contracts/). Four runtimes compute the overall
+score — the dbt mart, `api/scoring.py`, the website's `web/src/lib/reweight.ts`,
+and `scripts/rescore_extract.py` — and each is bound to
+`contracts/neighbourhood-scoring-v2.json`: three read that file directly, and the
+dbt weight bounds are tied to it by a parity test rather than retyped. A fifth
+copy that read neither the contract nor the golden cases would be a silent
+divergence risk, so
+[`tests/test_scoring_single_definition.py`](tests/test_scoring_single_definition.py)
+fails the build if the formula turns up in an undeclared file.
 (A Streamlit MVP and an Expo mobile client were also built and are now parked;
 the maintenance policy closes the feature roadmap.)
 
@@ -73,6 +91,23 @@ the maintenance policy closes the feature roadmap.)
 
 The metrics intentionally stay at their source-supported grains. The reference
 build does not infer an MSOA YoY rate or a property price from regional figures.
+The grains, denominators, null semantics and permitted consumers are fixed in
+[ADR-001: Area-market metric contract](docs/adr/ADR-001-area-market-metric-contract.md).
+
+That ADR also records the project's most deliberate omission. Its **"SCD2
+decision: rejected"** section refuses to put a slowly-changing dimension over
+`dim_area`: the geography loader recreates the postcode table from one
+normalised source file and retains no prior releases, so no real geography
+history exists in this repository to record. Deriving valid-from/valid-to rows
+from repeated builds, file timestamps or the CI fixture would *manufacture*
+history rather than record it, and the ADR forbids it. It then names the five
+conditions that would have to hold before SCD2 is reconsidered — retained
+authoritative releases, an attributable effective date per release with a
+documented source-effective vs ingestion-effective choice, a stable business key
+or official crosswalk policy, a change-bearing attribute with a documented
+"as-of" use, and an ingestion path that appends releases instead of replacing
+the current table. Until then: current-state geography plus source-snapshot
+metadata.
 
 **Worked area-contract example.** The API golden case for MSOA `E02006959`
 contains a matched-sale median of **£267,295**, from **417** matched sales in
@@ -88,10 +123,11 @@ not a valuation of a home, forecast, or promise about a live extract refresh.
 | `seeds/`, `macros/`, `analyses/` | dbt seeds (fixtures + name lookups), reusable macros (`haversine_km`, `median_anchored`), ad-hoc analyses. |
 | `scripts/` | Data prep/load scripts for the real (non-fixture) sources. |
 | `orchestration/` | **Dagster asset graph** over the monthly refresh: ingestion (+ a pre-dbt data-quality gate) → dbt → decision extract. |
-| `tests/` | 222 dbt data tests + 2 dbt unit tests + Python/API regression suites. |
+| `tests/` | 29 singular dbt tests + Python/API regression suites. The other 199 data tests are generic tests declared in the `models/` and `seeds/` schema files; 228 in total. |
 | `api/` | **FastAPI service** over the decision marts (resolve / search / listing-check / areas index / meta). `Dockerfile` + `fly.toml`. |
 | `web/` | **Housing decision-support website** — Next.js. Search, compare, listing checker, and ~7k programmatic area/town/region/rent pages. See [`web/README.md`](web/README.md) and [`web/DESIGN_BRIEF.md`](web/DESIGN_BRIEF.md). |
 | `data/` | Local DuckDB warehouse + the committed `decision.duckdb` extract the API ships. |
+| `docs/` | Architecture decision records (`docs/adr/`) and the evidence inventories behind them. |
 | `DEPLOY.md` | Runbook for deploying the API (Fly.io) and website (Vercel). |
 
 The website's search map uses MapLibre GL JS with the keyless OpenFreeMap tile
@@ -118,11 +154,21 @@ every push. Nine authoritative/open-data source families support the output.
 | Geography (ONSPD) | 2.73M postcodes → 7,264 E&W MSOAs | 99.999% Land Registry coverage; readable area/LA/region names. |
 | Rent + affordability (ONS PIPR) | 100% of MSOAs | Local-authority rent incl. **per-bedroom** (1/2/3/4+). |
 | Energy (EPC) | 100% (23.5M certificates) | Per-area median EPC band. |
-| Crime (Police API) | 99.6% (17.1M crimes) | Approx. monthly rate per 1,000 — indicator only. |
+| Crime (Police API) | 99.6% (17.1M crimes) | Approx. monthly rate per 1,000 — **indicator only**; locations are snapped, see below. |
 | Population (ONS mid-year estimates) | 7,264 MSOA 2021 areas | Compatible mid-2024 denominator for the monthly crime rate. |
 | Planning constraints (Planning Data Platform) | England only | Wales is explicitly not covered; no favourable zero default. |
 | Flood (Environment Agency zones via Planning Data Platform) | England only | Share of postcodes intersecting a zone; Wales is explicitly not covered. |
 | Convenience (OpenStreetMap) | 100% (437k amenities) | Nearest supermarket/school/GP/park/station + walkable count. |
+
+**Why the crime figure is an indicator and not a measurement.** Police.uk does not publish where a
+crime happened. Before publication each crime is moved to the nearest point on a fixed anonymisation
+grid — a master list of roughly 779,000 points built in 2012 and refreshed in 2022, each covering a
+catchment of at least eight postal addresses. Police.uk's own documentation states that inconsistent
+force geocoding policies mean the published location cannot be relied on as fully accurate or
+consistent, and puts geocoding accuracy across forces in a range from 60% to 97%. An area rate built
+from snapped points therefore carries locational error that varies by force and cannot be corrected
+downstream. This is why the indicator is published as a rate beside its period and denominator, and
+never as a safety judgement — and it is why that caveat is not softened anywhere in this project.
 
 Each external source is **fixture-default for fast, reproducible CI**, with a
 real-data toggle (`--vars '<source>: …'`) for production builds. Explainable
@@ -176,14 +222,21 @@ model is an asset and every dbt test an asset check in the same lineage.
 
 Two design points worth reading the code for:
 
-- **Data-quality gates *before* dbt.** dbt tests run after load; every
-  ingestion asset is gated *before* it. The raw Land Registry parquet is
-  validated in [`orchestration/checks.py`](orchestration/checks.py) (row-count
-  floor, price/date null-flood, malformed-postcode rate), and each reference
-  source carries a `prepared_file_is_sane` check evaluated before its
-  drop-and-recreate load — without it, a truncated prepared file would
-  replace a good warehouse table. A failed gate halts the graph at the front
-  door instead of propagating into the marts.
+- **Data-quality gates *before* dbt, with named thresholds.** dbt tests run
+  after load; every ingestion asset is gated *before* it. The raw Land Registry
+  parquet must clear three assertions in
+  [`orchestration/checks.py`](orchestration/checks.py): a **row-count floor of
+  3,000,000** (a full 2021–2025 drop is around 5M, so anything far below it is a
+  truncated or partial file), **zero** null-or-empty prices and **zero** null
+  transfer dates, and a **malformed-postcode rate of ≤ 1%** — non-empty
+  postcodes failing a UK postcode pattern, as a share of all rows, since
+  genuinely empty postcodes are normal in older records. Each of the five
+  reference sources then carries its own `prepared_file_is_sane` check
+  (row-count floor, required columns, non-null business key) evaluated *before*
+  its drop-and-recreate load, so a truncated prepared file cannot replace a good
+  warehouse table. All of these are Dagster asset checks with `blocking=True`:
+  a failed gate halts the graph at the front door instead of propagating into
+  the marts.
 - **The orchestrated build is the real refresh.** It parses *and* builds dbt
   with the real-source vars, while plain `dbt build` keeps the fixture-seed
   default for fast, reproducible CI. One `full_refresh` job runs the whole
@@ -192,11 +245,14 @@ Two design points worth reading the code for:
 Why Dagster and not Airflow: this is a set of data assets with lineage, not a
 task DAG — the asset/materialization model fits, and dbt lineage flows into the
 same graph. Freshness is declared (35-day warn on the warehouse spine and the
-extract, mirroring dbt's source freshness) and a monthly schedule is defined in
-code, but ships **switched off**: the full source archives are large/licensed
-and refreshed manually, so the job runs on demand
-(`dagster dev -m orchestration.definitions`). Pretending a scheduler runs in
-production would be theatre. Details and trade-offs in
+extract, mirroring dbt's source freshness) and the monthly cadence is defined in
+code — `cron_schedule="0 9 28 * *"`, aligned to Land Registry's publication
+around the 20th working day — but it ships with
+`default_status=DefaultScheduleStatus.STOPPED`, and the code comment beside it
+says why: the reference-source archives are large, licensed and fetched by hand,
+so pretending an unattended cron runs in production "would be theatre". The
+schedule documents the intended SLA; the job runs on demand
+(`dagster dev -m orchestration.definitions`). Details and trade-offs in
 [`orchestration/README.md`](orchestration/README.md).
 
 ## Running locally
@@ -245,13 +301,30 @@ source-freshness, sqlfluff, and the web lint/test/build checks.
 | Layer | Count | What it catches |
 |---|---|---|
 | Source freshness | 1 | Stale upstream data (warn if nothing newer than 35 days). |
-| Built-in row-shape | 162 | Schema bugs, FK orphans, enum drift, contract violations. |
+| Built-in row-shape | 163 | Schema bugs, FK orphans, enum drift, contract violations. |
 | `dbt-utils` | 22 | Sign/range invariants, multi-column uniqueness, score bounds. |
 | `dbt-expectations` | 14 | Type-cast bugs, statistical drift, format regressions. |
-| Singular (`tests/assert_*.sql`) | 30 | Domain anomalies, coverage, coherence, and cross-runtime golden cases. |
+| Singular (`tests/assert_*.sql`) | 29 | Domain anomalies, coverage, coherence, and cross-runtime golden cases. |
 | **dbt data-test total** | **228** | All passing on every `dbt build`. |
 | dbt **unit** tests | 2 | Model *logic* on mock inputs: enrichment (postcode parse + region join + filter) and the scoring maths (median-anchored min-max, geometric-mean floor, missing-component rule). |
 | API (`tests/test_api.py`) | 14 | Versioned OpenAPI contract, neutral comparison fields, search validation/re-rank, missing-data and jurisdiction coverage, mocked postcodes.io. |
+
+Two CI steps are gates rather than counts, and they are the two worth reading
+[`ci.yml`](.github/workflows/ci.yml) for:
+
+- **A negative test that proves the scoring contract still refuses bad input.**
+  One step runs `dbt compile --select rpt_neighbourhood_score --vars
+  '{score_weight_affordability: 6}'` and **fails the build if that command
+  succeeds**. Scoring weights are bounded 0.0–5.0 by `allowed_weight` in
+  [`contracts/neighbourhood-scoring-v2.json`](contracts/neighbourhood-scoring-v2.json),
+  enforced at compile time by the
+  [`validated_score_weight`](macros/validated_score_weight.sql) macro, so a
+  weight of 6 must raise a compilation error. A green test suite only proves
+  valid weights work; this step proves invalid ones are rejected, so the guard
+  cannot rot unnoticed.
+- **sqlfluff lint over `models/` is a hard merge gate**, not an advisory job. A
+  style violation in model SQL fails the same required `build-and-test` check as
+  a failing data test.
 
 ## Modelling & scoring principles
 
@@ -283,7 +356,7 @@ commands are catalogued in
 - [ONS Postcode Directory](https://geoportal.statistics.gov.uk/) — postcode → MSOA/LSOA/LA/region geography and name lookups. Contains OS, ONS, Royal Mail and NRS data © Crown copyright and database right.
 - [ONS Price Index of Private Rents](https://www.ons.gov.uk/economy/inflationandpriceindices/datasets/priceindexofprivaterentsukmonthlypricestatistics) — local-authority rent (incl. per bedroom). Values may be provisional and revised.
 - [Energy Performance Certificates](https://get-energy-performance-data.communities.gov.uk/) — per-area median EPC band (23.5M certificates). Certificates may be expired or superseded.
-- [Police street-level crime](https://data.police.uk/data/) — approximate monthly crime rate per 1,000 (LSOA→MSOA), as an indicator only.
+- [Police street-level crime](https://data.police.uk/data/) — approximate monthly crime rate per 1,000 (LSOA→MSOA), as an indicator only. Locations are snapped to an anonymisation grid before publication and force geocoding accuracy is stated by the publisher as ranging from 60% to 97%.
 - [ONS mid-year population estimates](https://www.ons.gov.uk/peoplepopulationandcommunity/populationandmigration/populationestimates) — compatible mid-2024 MSOA population denominator for the recorded-crime rate.
 - [Planning Data Platform](https://www.planning.data.gov.uk/) — per-MSOA planning-constraint count via spatial point-in-polygon.
 - [Environment Agency flood-risk zones](https://environment.data.gov.uk/) — per-MSOA flood-risk band from postcode intersections, distributed through the Planning Data Platform.
