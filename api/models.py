@@ -43,7 +43,16 @@ class Area(BaseModel):
     rent_3bed_gbp: Optional[float] = None
     rent_4plus_gbp: Optional[float] = None
     epc_median_rating: Optional[str] = None
-    crime_rate_per_1000: Optional[float] = None
+    crime_rate_per_1000: Optional[float] = Field(
+        default=None,
+        description=(
+            "Monthly recorded-crime rate per 1,000 residents. An INDICATOR ONLY, never a "
+            "safe/unsafe judgement. Police.uk publishes anonymised locations snapped to a fixed "
+            "master point list, and states that force geocoding accuracy ranges from 60% to 97%, "
+            "so this rate carries locational error inherited from the source. Transport it with "
+            "crime_period_start/end and crime_population_denominator; do not present it alone."
+        ),
+    )
     crime_record_count: Optional[int] = None
     crime_months_observed: Optional[int] = None
     crime_period_start: Optional[str] = None

@@ -12,7 +12,7 @@ export const metadata: Metadata = {
 
 const INDICATORS: [string, string, string][] = [
   ["Affordability", "ONS · HM Land Registry", "Local-authority average rent (overall and per-bedroom) and MSOA median sale-price context, relative to other areas."],
-  ["Recorded crime", "Police.uk · ONS population", "Monthly recorded-crime rate per 1,000 residents using the compatible mid-2024 MSOA population denominator. A rate and a caveat — never a safe/unsafe label."],
+  ["Recorded crime", "Police.uk · ONS population", "Monthly recorded-crime rate per 1,000 residents using the compatible mid-2024 MSOA population denominator. A rate and a caveat — never a safe/unsafe label. Police.uk publishes anonymised locations snapped to a fixed grid of map points rather than where a crime happened, and states that geocoding accuracy across forces ranges from 60% to 97%, so this rate carries locational error we cannot correct."],
   ["Energy efficiency", "EPC Register", "Median EPC rating: a proxy for running costs and comfort."],
   ["Flood resilience", "Environment Agency", "England-only flood-zone context. Wales is explicitly not covered and receives no flood score. This is not a property-level survey."],
   ["Getting around", "OpenStreetMap", "Walkable amenity count and distance to the nearest station, supermarket, GP, school and greenspace."],

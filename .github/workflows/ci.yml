@@ -1,4 +1,7 @@
-# PR gate — proves every change still builds + passes 222 data tests + lints clean.
+# PR gate — proves every change still builds, passes the full dbt data-test and
+# unit-test suite, and lints clean. Counts are deliberately not written down here:
+# `dbt build` runs whatever the project defines, so a number in a comment can only
+# go stale. The current totals are in the README's Testing & CI table.
 #
 # Triggers:
 #   - pull_request to main: every PR is gated
@@ -14,17 +17,19 @@
 #   5. Download two years of Land Registry data (--sample, enough for YoY)
 #   6. Load it into DuckDB
 #   7. dbt source freshness — proves the loaded source is current enough
-#   8. dbt seed + dbt build — all marts + 222 data tests + 2 unit tests on sample
+#   8. dbt seed + dbt build — all marts + every data test and unit test on sample
 #   9. Web golden tests, lint, and production build against the local API
 #  10. sqlfluff lint — model SQL must satisfy .sqlfluff rules
 #
 # Branch protection on main requires the "build-and-test" check to pass before
 # merging. See repo Settings → Branches.
 #
-# Why a sample, not the full 5-year Parquet:
-#   - Full pull is ~157MB Parquet across 5 years and would burn 3-5min of CI
-#     time per PR. The 2-year sample exercises the same SQL paths, hits all
-#     the full data-test suite, and proves YoY logic is non-vacuous. Row-count test bounds
+# Why a sample, not the full multi-year Parquet:
+#   - The full pull is an order of magnitude larger than the sample and would add
+#     minutes of download and load time to every PR. Sizes and years are not
+#     written down here because both move with the source; scripts/download_raw.py
+#     is the authority. The sample exercises the same SQL paths, runs the whole
+#     data-test suite, and proves YoY logic is non-vacuous. Row-count test bounds
 #     were calibrated to pass on either full or sample data.
 
 name: CI
@@ -120,7 +125,7 @@ jobs:
       - name: dbt seed
         run: dbt seed --target dev --threads 1
 
-      - name: dbt build (runs all marts + 222 data tests + 2 unit tests)
+      - name: dbt build (all marts, data tests, and unit tests)
         run: dbt build --target dev --threads 1
 
       - name: Install web dependencies

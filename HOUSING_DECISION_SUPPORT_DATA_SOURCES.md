@@ -139,12 +139,23 @@ Relevant facts checked:
 - The API provides street-level crime and outcome data.
 - It uses JSON web service endpoints over HTTP GET and POST.
 - It includes crime-related and neighbourhood-related methods.
+- **Published locations are anonymised, not actual.** Each crime is snapped to the nearest point on
+  a fixed master list of roughly 779,000 points (built 2012, refreshed 2022); each point covers a
+  catchment of at least eight postal addresses, and a crime with no point within 20km has its
+  coordinates zeroed. Verified against https://data.police.uk/about/ on 2026-07-27.
+- **The publisher disclaims locational accuracy.** Police.uk states that inconsistent geocoding
+  policies across forces mean the location data cannot be relied on as fully accurate or consistent,
+  and gives a cross-force geocoding accuracy range of **60% to 97%**.
 
 How to use:
 
 - Aggregate monthly crime categories around area centroids or within area boundaries.
 - Convert counts into monthly rates using the compatible ONS mid-2024 MSOA population denominator.
 - Do not call areas "safe" or "unsafe"; show indicator levels and uncertainty.
+- **Never soften the indicator-only caveat.** The snapping and the force-varying geocoding accuracy
+  above are the reason it exists: the locational error is inherited from the source and cannot be
+  removed by any downstream aggregation. Any surface that shows the crime rate must carry the
+  caveat with it.
 
 Implemented paths: `scripts/prepare_crime_seed.py`, `scripts/load_crime.py`,
 `stg_crime__street`, `int_area__crime`, and `rpt_area_profile_mvp`.

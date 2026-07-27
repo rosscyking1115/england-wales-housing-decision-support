@@ -23,6 +23,12 @@ every neighbourhood (7,264 of them) it shows five 0–100 scores *and the raw fa
 behind each one*. The product's soul is **transparency: no number is asked to be
 trusted on its own.**
 
+> Read that as a **design commitment, not a differentiator.** Transparent
+> neighbourhood composites already exist, and at least one publishes its full
+> weights and charges nothing. Transparency is how this interface must behave; it
+> is not a claim about what other people fail to do, and no copy on the site may
+> imply otherwise.
+
 - **Audience:** renters and buyers weighing a move — stressed, sceptical, doing a
   high-stakes life decision. Also Google/AI search traffic landing cold on a
   single area page. Range from data-savvy to data-wary; design for the wary.
