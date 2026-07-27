@@ -99,9 +99,13 @@ const DEFS: Def[] = [
   },
 ];
 
-export const SOURCE_NOTES: { no: number; text: string }[] = [
+export const SOURCE_NOTES: { no: number; text: string; href?: string }[] = [
   { no: 1, text: "Average rent is local-authority context from the ONS Price Index of Private Rents; sale prices are MSOA-level HM Land Registry context." },
-  { no: 2, text: "Crime is a monthly Police.uk recorded-crime rate using the compatible ONS mid-2024 MSOA population denominator." },
+  {
+    no: 2,
+    text: "Crime is a monthly Police.uk recorded-crime rate using the compatible ONS mid-2024 MSOA population denominator. Police.uk publishes snapped, approximate locations, so this rate carries locational error.",
+    href: "/methodology",
+  },
   { no: 3, text: "Energy rating from the EPC Register (median domestic certificate)." },
   { no: 4, text: "Environment Agency and Planning Data flood coverage is England-only here; Wales is shown as not covered, never as low risk." },
   { no: 5, text: "Amenities and transport from OpenStreetMap." },
