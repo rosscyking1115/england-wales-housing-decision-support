@@ -23,7 +23,7 @@ export function AreaDetail({
   summary: string;
   rentRows: FactRow[];
   factRows: FactRow[];
-  sources: { no: number; text: string }[];
+  sources: { no: number; text: string; href?: string }[];
   areaId: string;
 }) {
   const [priorities, setPriorities] = useState<Set<ComponentKey>>(new Set());
@@ -126,6 +126,14 @@ export function AreaDetail({
           {sources.map((s) => (
             <div key={s.no} className="text-xs leading-[1.7] text-ink2">
               <sup className="font-mono text-accent">{s.no}</sup> {s.text}
+              {s.href && (
+                <>
+                  {" "}
+                  <Link href={s.href} className="text-accent underline underline-offset-2">
+                    How this is measured
+                  </Link>
+                </>
+              )}
             </div>
           ))}
         </div>

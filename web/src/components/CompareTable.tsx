@@ -51,6 +51,7 @@ const stickyTh = "sticky left-0 z-10 bg-card text-left";
 
 export function CompareTable({ areas }: { areas: Area[] }) {
   return (
+    <>
     <div className="overflow-x-auto rounded-[16px] border border-rule2 bg-card">
       <table className="w-full min-w-[560px] border-collapse">
         <thead>
@@ -114,6 +115,14 @@ export function CompareTable({ areas }: { areas: Area[] }) {
         </tbody>
       </table>
     </div>
+    <p className="mt-[11px] text-xs leading-[1.7] text-muted">
+      Crime / 1,000 is a Police.uk recorded-crime rate. Its locations are snapped and approximate,
+      so the figure carries locational error — an indicator, never a safety label.{" "}
+      <Link href="/methodology" className="text-accent underline underline-offset-2">
+        How this is measured
+      </Link>
+    </p>
+    </>
   );
 }
 
