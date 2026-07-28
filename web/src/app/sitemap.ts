@@ -3,11 +3,9 @@ import { getAllAreas } from "@/lib/api";
 import { areaSlug } from "@/lib/slug";
 import { completeness } from "@/lib/quality";
 import { REGIONS, regionSlug, townSlug } from "@/lib/geo";
+import { SITE_URL } from "@/lib/site-url";
 
 export const revalidate = 86400;
-
-const SITE_URL =
-  process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, "") ?? "http://localhost:3000";
 
 // Core + hub pages always; area pages that clear the quality gate. Sparse areas
 // stay out (they're noindex anyway) so the sitemap only advertises pages worth

@@ -1,8 +1,6 @@
 import type { Area } from "./types";
 import { answerSentence } from "./summary";
-
-const SITE_URL =
-  process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, "") ?? "http://localhost:3000";
+import { SITE_URL } from "./site-url";
 
 /** ItemList + BreadcrumbList for a ranking/hub page. */
 export function rankingJsonLd(
