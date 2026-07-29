@@ -55,10 +55,16 @@ The committed `data/decision.duckdb` now contains
 `sale_price_reference_year = 2025` for all 7,264 area-profile rows. Before the
 write, the full-geography model output reconciled exactly to the committed sale
 median, matched-sale count and confidence state; the period was its only added
-column. The extract was snapshotted at
-`D:\_pmo_vault\snapshots\2026-07-23_182141_housing-h34-authorised-reference-year-refresh.zip`
-then migrated additively, preserving the existing score table and all other
-area-context fields.
+column. The extract was snapshotted before the write, then migrated additively,
+preserving the existing score table and all other area-context fields.
+
+That snapshot is **held privately and is not published with this repository**,
+so it is identified here by content rather than by location: a 397,936-byte
+archive taken 2026-07-23 at 18:21:42, SHA-256
+`70d0b50526332df4adf076153566c14db1c1bd23e164b5bd1394817ccb934450`. The hash is
+recorded so the artefact can be identified unambiguously if it is ever produced,
+and so this attestation — that a pre-migration snapshot exists and which one it
+is — stays checkable without naming a private storage path.
 
 ## SCD2 decision
 
