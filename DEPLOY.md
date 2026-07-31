@@ -13,7 +13,11 @@ the region hubs and sitemap), then the **website**.
 ## 1. API — Fly.io
 
 Config: [`api/fly.toml`](api/fly.toml) + [`api/Dockerfile`](api/Dockerfile). App
-name `uk-housing-decision-support-api`, region `lhr` (London), scales to zero.
+name `uk-housing-decision-support-api`, region `lhr` (London), one machine kept
+running (`min_machines_running = 1`). It previously scaled to zero; a cold start
+measured 19.7s to first byte on 2026-07-31, and because the website renders
+server-side against this API, an uncached page took 22.2s. Traffic arrives by
+link rather than steadily, so most visits met a cold machine.
 
 Run these **from the repo root** — the Dockerfile copies `api/` + `data/decision.duckdb`,
 so the build context must be the root (a root `.dockerignore` keeps the upload

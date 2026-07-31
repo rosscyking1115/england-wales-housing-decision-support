@@ -1,5 +1,26 @@
 # Pre-registration: search-demand test for the deployed site
 
+> ## Status update, 2026-07-31: abandoned, unmeasured
+>
+> The Search Console property was verified on 2026-07-27 and the sitemap submitted on 2026-07-28,
+> but the sitemap never returned a successful fetch — Search Console reported `Couldn't fetch` with
+> `Last read` blank and 0 discovered pages for three days. **No impression data and no indexation
+> count was ever read.** Step 0 never ran.
+>
+> The test is not being resumed. The decision it fed — whether to pursue a consumer-paid route —
+> is not live: this repository is a reference analytics-engineering project with a closed feature
+> roadmap, and the site's audience arrives by a link from the README rather than from search. A
+> measurement that changes no decision is not worth taking.
+>
+> **This is not a finding about demand.** Nothing below was measured. No result — not "demand
+> exists", not "no demand", not even the pre-registered VOID verdict — may be inferred from this
+> file or from the absence of data in it. The thresholds below are left exactly as written on
+> 2026-07-27 so that the record shows what *would* have counted, had it been run.
+>
+> Everything from here down is the original 2026-07-27 pre-registration, unchanged.
+
+---
+
 - **Status:** Pre-registered. Written 2026-07-27, **before any impression data existed to look at**
   — the Search Console property is not yet connected, so no one has seen a number.
 - **Method:** Search demand analysis on an owned, already-deployed asset. Cost: nil. Build: none.
