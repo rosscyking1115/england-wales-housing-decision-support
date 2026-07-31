@@ -2,7 +2,11 @@
 # api/ + data/decision.duckdb, so the build context must be the root):
 #   fly apps create uk-housing-decision-support-api    # one-time, claim the name
 #   fly deploy --config api/fly.toml                   # build + ship
-# Scales to zero when idle.
+# Keeps one machine running. Measured 2026-07-31: a cold start took 19.7s to
+# first byte, and an uncached area page 22.2s end to end, because the website
+# renders server-side against this API. The site's traffic arrives by a link
+# rather than in a steady stream, so almost every visit was landing on a cold
+# machine. One always-on shared-cpu-1x is the cost of that not happening.
 app = "uk-housing-decision-support-api"
 primary_region = "lhr"
 
@@ -17,7 +21,8 @@ primary_region = "lhr"
   force_https = true
   auto_stop_machines = "stop"
   auto_start_machines = true
-  min_machines_running = 0
+  # The floor auto_stop respects: extra machines may stop, this one never does.
+  min_machines_running = 1
 
   [[http_service.checks]]
     method = "GET"
