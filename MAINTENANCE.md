@@ -39,6 +39,35 @@ this policy is to mark the affected indicator unavailable and lower evidence qua
 substitute a coarser geography and present it at MSOA grain, and never to carry a stale figure
 forward without changing its stated reference date.
 
+## Checking a system you are also warming
+
+Recorded 2026-08-01, after this cost three days on a blocker.
+
+The API scaled to zero and cold-started in 19.7 seconds. That was true for weeks
+and was never once observed, because **every check warmed the machine**. A fetch
+to confirm the site was up left it up; the next check ran against a warm machine
+and passed. The instrument guaranteed its own answer, and the site was verified
+repeatedly across several sessions with the defect present the whole time.
+
+The only observation that survived was the one that did not touch the system —
+"it has been so many days" — because elapsed time is not warmed by being looked
+at. Two further instances of the same defect surfaced the same day in sibling
+projects: a test suite whose fixtures were all ASCII, so a bug that destroyed
+non-ASCII characters could not be triggered by it; and a scheduled task that
+reported `Ready` for nine days without ever running.
+
+The rule this repository keeps:
+
+- **When a check can change the state it measures, say so beside the result.** A
+  passing check on a system you just touched is evidence about the touched state,
+  not the resting one. Cold-start, cache, connection-pool and rate-limit
+  behaviour are all invisible to a warm observer.
+- **Keep at least one observation that does not touch the system.** Elapsed time,
+  a third party's report, a log written before you arrived, a bill.
+- **If a fault is reported that you cannot reproduce, suspect the instrument
+  before disbelieving the report.** "Works for me" and "works when observed" are
+  different claims, and usually only the second one has been tested.
+
 The non-negotiable publication rules remain: indicators are not verdicts; scores
 are never encoded as red/amber/green judgements; each score stays beside its
 source fact; uncertainty and unsupported jurisdictions are explicit; outputs are
