@@ -2,11 +2,14 @@
 # api/ + data/decision.duckdb, so the build context must be the root):
 #   fly apps create uk-housing-decision-support-api    # one-time, claim the name
 #   fly deploy --config api/fly.toml                   # build + ship
-# Keeps one machine running. Measured 2026-07-31: a cold start took 19.7s to
-# first byte, and an uncached area page 22.2s end to end, because the website
-# renders server-side against this API. The site's traffic arrives by a link
-# rather than in a steady stream, so almost every visit was landing on a cold
-# machine. One always-on shared-cpu-1x is the cost of that not happening.
+# Scales to zero when idle. Measured 2026-07-31, so the cost is known rather
+# than assumed: a cold start takes 19.7s to first byte (0.05s warm), and an
+# uncached area page 22.2s end to end, because the website renders server-side
+# against this API on its dynamic routes. The static routes - homepage,
+# sitemap, robots, methodology, rankings - are prerendered on Vercel and are
+# not affected. min_machines_running = 1 would remove the cold start for
+# $3.32/month at the size configured below; declined 2026-08-01, this being a
+# reference project rather than a flagship and not worth a recurring charge.
 app = "uk-housing-decision-support-api"
 primary_region = "lhr"
 
@@ -21,8 +24,7 @@ primary_region = "lhr"
   force_https = true
   auto_stop_machines = "stop"
   auto_start_machines = true
-  # The floor auto_stop respects: extra machines may stop, this one never does.
-  min_machines_running = 1
+  min_machines_running = 0
 
   [[http_service.checks]]
     method = "GET"
