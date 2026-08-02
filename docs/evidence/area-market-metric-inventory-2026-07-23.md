@@ -30,7 +30,7 @@ decision-extract reference-year refresh recorded below.
 two decision marts (`rpt_neighbourhood_score` and `rpt_area_profile_mvp`). This
 is the generated-lineage boundary: the regional-year reports are deliberately
 not exposed as delivery dependencies. The generated
-`C:\tmp\housing-h34-dbt\target\manifest.json` records all three exposures with
+`C:\tmp\isolated-dbt\target\manifest.json` records all three exposures with
 exactly these two dependencies; the isolated `catalog.json` was generated from
 the same build.
 
@@ -77,8 +77,19 @@ geography with observation/source-version metadata.
 
 ## Isolated verification record
 
-All dbt commands use `C:\tmp\housing-h34-dbt\profiles.yml`, a temporary
-DuckDB path, and `--target-path C:\tmp\housing-h34-dbt\target`. They never
+> **Directory names substituted 2026-08-02.** The two temporary working
+> directories below were originally named after an internal task identifier.
+> They are written here as `isolated-dbt` and `isolated-full`, a **one-to-one**
+> substitution: each name maps to exactly one original directory, so the two
+> runs stay distinguishable and every command below remains reproducible in
+> form. Nothing else in this record was altered, and no result was restated.
+> The attestation this section makes — that dbt ran against a temporary profile
+> and target outside the repository, never against `data/*.duckdb` — is
+> unaffected, because it rests on the isolation, not on what the directory was
+> called.
+
+All dbt commands use `C:\tmp\isolated-dbt\profiles.yml`, a temporary
+DuckDB path, and `--target-path C:\tmp\isolated-dbt\target`. They never
 point at `data/*.duckdb`.
 
 | Command | Result |
@@ -87,13 +98,13 @@ point at `data/*.duckdb`.
 | `npm run lint` (from `web`) | PASS — ESLint exit 0. |
 | `npm test` (from `web`) | PASS — 2 files, 20 tests. Includes no-sales, indicative, reliable and absent-reference-year sale-price evidence cases. |
 | `API_BASE_URL=http://127.0.0.1:8011 npm run build` (from `web`) | PASS — rerun after scope review; Next.js production build compiled, type-checked and generated 24 static pages against a temporary local FastAPI process. Next.js emitted its existing over-2MB cache warnings for `/v2/areas/index`; the build still exited 0. |
-| `.\.venv\Scripts\sqlfluff.exe lint models --config C:\tmp\housing-h34-dbt\.sqlfluff` | PASS — dbt templater compiled the project; no lint findings. The temporary configuration points SQLFluff to the isolated profile. |
-| `.\.venv\Scripts\dbt.exe build --project-dir . --profiles-dir C:\tmp\housing-h34-dbt --target isolated --target-path C:\tmp\housing-h34-dbt\target --threads 1` | PASS — 264 pass, 0 errors, 0 warnings, 3 declared exposure no-ops (267 total); 23 models, 228 data tests, 16 seeds and 2 unit tests. The temporary warehouse is a local clone of the pre-existing warehouse because an empty isolated file has no `raw_landreg.transactions`; no source download occurred. |
-| `.\.venv\Scripts\dbt.exe docs generate --project-dir . --profiles-dir C:\tmp\housing-h34-dbt --target isolated --target-path C:\tmp\housing-h34-dbt\target --threads 1` | PASS — `catalog.json` written to `C:\tmp\housing-h34-dbt\target\catalog.json`. |
-| `.\.venv\Scripts\dbt.exe build --select +rpt_area_profile_mvp +rpt_neighbourhood_score --vars "{geo_source: onspd}" --project-dir . --profiles-dir C:\tmp\housing-h34-full-fix --target isolated_full --target-path C:\tmp\housing-h34-full-fix\target --threads 1` | PASS — 195 pass, 0 errors, 0 warnings. The previous 407-row guard failure was a coverage-status defect: Welsh MSOAs with no England-only fixture constraint row inherited `source_missing`. `rpt_area_profile_mvp` now declares both constraint statuses `not_covered` for `W%` MSOAs; the fact fields remain null and the score calculation is unchanged. |
-| `.\.venv\Scripts\dbt.exe build --project-dir . --profiles-dir C:\tmp\housing-h34-full-fix --target isolated_full --target-path C:\tmp\housing-h34-full-fix\target-fixture --threads 1` | PASS — 264 pass, 0 errors, 0 warnings, 3 declared exposure no-ops (267 total). This is the fresh default-fixture regression run after the status correction. |
-| `.\.venv\Scripts\sqlfluff.exe lint models --config C:\tmp\housing-h34-dbt\.sqlfluff` | PASS — dbt templater compiled the project and reported no lint findings after the status correction. |
-| `.\.venv\Scripts\dbt.exe docs generate --project-dir . --profiles-dir C:\tmp\housing-h34-full-fix --target isolated_full --target-path C:\tmp\housing-h34-full-fix\target-docs --threads 1` | PASS — `catalog.json` written to `C:\tmp\housing-h34-full-fix\target-docs\catalog.json`. |
+| `.\.venv\Scripts\sqlfluff.exe lint models --config C:\tmp\isolated-dbt\.sqlfluff` | PASS — dbt templater compiled the project; no lint findings. The temporary configuration points SQLFluff to the isolated profile. |
+| `.\.venv\Scripts\dbt.exe build --project-dir . --profiles-dir C:\tmp\isolated-dbt --target isolated --target-path C:\tmp\isolated-dbt\target --threads 1` | PASS — 264 pass, 0 errors, 0 warnings, 3 declared exposure no-ops (267 total); 23 models, 228 data tests, 16 seeds and 2 unit tests. The temporary warehouse is a local clone of the pre-existing warehouse because an empty isolated file has no `raw_landreg.transactions`; no source download occurred. |
+| `.\.venv\Scripts\dbt.exe docs generate --project-dir . --profiles-dir C:\tmp\isolated-dbt --target isolated --target-path C:\tmp\isolated-dbt\target --threads 1` | PASS — `catalog.json` written to `C:\tmp\isolated-dbt\target\catalog.json`. |
+| `.\.venv\Scripts\dbt.exe build --select +rpt_area_profile_mvp +rpt_neighbourhood_score --vars "{geo_source: onspd}" --project-dir . --profiles-dir C:\tmp\isolated-full --target isolated_full --target-path C:\tmp\isolated-full\target --threads 1` | PASS — 195 pass, 0 errors, 0 warnings. The previous 407-row guard failure was a coverage-status defect: Welsh MSOAs with no England-only fixture constraint row inherited `source_missing`. `rpt_area_profile_mvp` now declares both constraint statuses `not_covered` for `W%` MSOAs; the fact fields remain null and the score calculation is unchanged. |
+| `.\.venv\Scripts\dbt.exe build --project-dir . --profiles-dir C:\tmp\isolated-full --target isolated_full --target-path C:\tmp\isolated-full\target-fixture --threads 1` | PASS — 264 pass, 0 errors, 0 warnings, 3 declared exposure no-ops (267 total). This is the fresh default-fixture regression run after the status correction. |
+| `.\.venv\Scripts\sqlfluff.exe lint models --config C:\tmp\isolated-dbt\.sqlfluff` | PASS — dbt templater compiled the project and reported no lint findings after the status correction. |
+| `.\.venv\Scripts\dbt.exe docs generate --project-dir . --profiles-dir C:\tmp\isolated-full --target isolated_full --target-path C:\tmp\isolated-full\target-docs --threads 1` | PASS — `catalog.json` written to `C:\tmp\isolated-full\target-docs\catalog.json`. |
 | Authorised committed-extract migration | PASS — after snapshot, added only `app.rpt_area_profile_mvp.sale_price_reference_year`; 7,264 rows, min/max 2025, 0 null. |
 | Real committed-extract API golden parity | PASS — `E02006959` returned £267,295 / 417 / 2025 / `reliable`; `E02003353` returned £528,000 / 291 / 2025 / `reliable`. |
 | `.\.venv\Scripts\python.exe -m unittest tests.test_api tests.test_api_market_contract` | PASS — 17 tests. |
