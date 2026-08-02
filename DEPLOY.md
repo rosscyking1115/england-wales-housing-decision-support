@@ -13,11 +13,21 @@ the region hubs and sitemap), then the **website**.
 ## 1. API — Fly.io
 
 Config: [`api/fly.toml`](api/fly.toml) + [`api/Dockerfile`](api/Dockerfile). App
-name `uk-housing-decision-support-api`, region `lhr` (London), one machine kept
-running (`min_machines_running = 1`). It previously scaled to zero; a cold start
-measured 19.7s to first byte on 2026-07-31, and because the website renders
-server-side against this API, an uncached page took 22.2s. Traffic arrives by
-link rather than steadily, so most visits met a cold machine.
+name `uk-housing-decision-support-api`, region `lhr` (London), **scales to zero**
+when idle.
+
+**The measured cost of that, 2026-07-31.** A cold start takes **19.7s** to first
+byte, against 0.05s warm; an uncached area page takes **22.2s** end to end,
+because the website renders server-side against this API on its dynamic routes
+(`/area/[slug]`, `/town/[town]`, `/rent/[town]`, `/search`, `/compare`). The
+static routes — homepage, `/sitemap.xml`, `/robots.txt`, `/methodology`,
+`/rankings` — are prerendered on Vercel and never touch this service, so a
+visitor's first page is fast and their first *interaction* is not.
+
+Setting `min_machines_running = 1` removes the cold start for **$3.32/month** at
+the configured `shared-cpu-1x` 512MB. **Declined 2026-08-01:** this is a
+reference project rather than a flagship, and a recurring charge is not worth it
+here. Revisit only if the site acquires a reason to be fast on first click.
 
 Run these **from the repo root** — the Dockerfile copies `api/` + `data/decision.duckdb`,
 so the build context must be the root (a root `.dockerignore` keeps the upload

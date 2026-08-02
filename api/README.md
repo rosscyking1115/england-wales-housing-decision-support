@@ -46,9 +46,10 @@ fly launch --no-deploy      # claim an app name; edit fly.toml if needed
 fly deploy                  # builds api/Dockerfile, ships the extract
 ```
 
-Keeps one machine running rather than scaling to zero — a cold start measured
-19.7s on 2026-07-31, and the website renders server-side against this API, so a
-sleeping machine meant a 22.2s first page. To refresh the data: rebuild `data/decision.duckdb`
+Scales to zero when idle, so the first request after a quiet period pays a cold
+start — measured 19.7s to first byte on 2026-07-31 (0.05s warm), and 22.2s for
+an uncached area page. Accepted deliberately rather than paying $3.32/month to
+keep a machine up; see [`DEPLOY.md`](../DEPLOY.md). To refresh the data: rebuild `data/decision.duckdb`
 (`scripts/build_decision_db.py`) and redeploy. Tighten CORS in `api/main.py` to
 the website/app origins before launch.
 
