@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { getMeta } from "@/lib/api";
 
-export const revalidate = 86400;
+export const revalidate = false; // dataset only changes on redeploy: render once, cache until next deploy
 
 export const metadata: Metadata = {
   title: "Methodology & data sources",

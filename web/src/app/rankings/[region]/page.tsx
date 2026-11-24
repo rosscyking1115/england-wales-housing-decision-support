@@ -10,7 +10,7 @@ import { JsonLd } from "@/components/JsonLd";
 import { rankingJsonLd } from "@/lib/structured-data";
 import { areaSlug } from "@/lib/slug";
 
-export const revalidate = 86400;
+export const revalidate = false; // dataset only changes on redeploy: render once, cache until next deploy
 
 const TOP_AREAS = 50;
 

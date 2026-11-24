@@ -18,7 +18,15 @@ import { AreaDetail } from "@/components/area/AreaDetail";
 import { JsonLd } from "@/components/JsonLd";
 import type { Area } from "@/lib/types";
 
-export const revalidate = 86400;
+export const revalidate = false; // dataset only changes on redeploy: render once, cache until next deploy
+
+// ~7,300 areas: too many to prerender against the API at build time. An empty
+// list still makes this route ISR - each area renders once on first visit and
+// is then served from cache until the next deploy (without this export, Next
+// rendered the page on every single request).
+export async function generateStaticParams(): Promise<{ slug: string }[]> {
+  return [];
+}
 
 type Props = { params: Promise<{ slug: string }> };
 

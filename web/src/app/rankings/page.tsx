@@ -6,7 +6,7 @@ import { areasInRegion, averageScore } from "@/lib/hubs";
 import { score } from "@/lib/format";
 import type { Area } from "@/lib/types";
 
-export const revalidate = 86400;
+export const revalidate = false; // dataset only changes on redeploy: render once, cache until next deploy
 
 export const metadata: Metadata = {
   title: "Neighbourhood rankings by region",
