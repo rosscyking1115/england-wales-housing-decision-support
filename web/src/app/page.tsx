@@ -2,7 +2,7 @@ import Link from "next/link";
 import { getMeta } from "@/lib/api";
 import { PostcodeBox } from "@/components/PostcodeBox";
 
-export const revalidate = 86400;
+export const revalidate = false; // dataset only changes on redeploy: render once, cache until next deploy
 
 async function safeMeta() {
   try {

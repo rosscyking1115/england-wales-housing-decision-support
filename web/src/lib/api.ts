@@ -18,8 +18,9 @@ import type {
 const API_BASE_URL =
   process.env.API_BASE_URL?.replace(/\/$/, "") ?? "http://127.0.0.1:8000";
 
-// Revalidate cached GETs daily; the dataset is static between refreshes.
-const DAY = 60 * 60 * 24;
+// Cached GETs never revalidate on a timer: the dataset only changes when the
+// API image is rebuilt, and a website redeploy clears the cache anyway.
+const UNTIL_REDEPLOY = false as const;
 
 class ApiError extends Error {
   constructor(
@@ -40,7 +41,7 @@ async function readDetail(res: Response): Promise<string> {
   }
 }
 
-async function getJson<T>(path: string, revalidate: number = DAY): Promise<T> {
+async function getJson<T>(path: string, revalidate: number | false = UNTIL_REDEPLOY): Promise<T> {
   const res = await fetch(`${API_BASE_URL}${path}`, {
     next: { revalidate },
     headers: { accept: "application/json" },
@@ -79,12 +80,36 @@ export async function getAreaOrNull(msoa: string): Promise<Area | null> {
   }
 }
 
-// The whole dataset in one cacheable GET, for the hubs / sitemap / link mesh.
-// React.cache dedupes within a render; the fetch's daily revalidate shares it
-// across renders. (Was 37 POSTs against /v1/search before the index endpoint.)
-export const getAllAreas = cache(
-  async (): Promise<Area[]> => (await getJson<AreaIndexResponse>("/v2/areas/index")).areas,
-);
+// The whole dataset in one GET, for the hubs / sitemap / link mesh.
+// (Was 37 POSTs against /v1/search before the index endpoint.)
+//
+// The index is ~13.8 MB, over Next's 2 MB data-cache item limit, so the
+// fetch-level revalidate never actually cached it: every town/rent/rankings
+// render re-downloaded and re-parsed the full payload. That was the bulk of
+// the Vercel Fluid Active CPU burn (Nov 2026). Hold it in module scope instead,
+// so each server instance (and each build worker) fetches it once. A failed
+// fetch clears the memo so the next request retries.
+let allAreasPromise: Promise<Area[]> | null = null;
+
+export function getAllAreas(): Promise<Area[]> {
+  if (!allAreasPromise) {
+    allAreasPromise = (async () => {
+      // force-cache (not no-store): no-store would opt every caller out of
+      // static rendering. Next will still decline to store an item this big
+      // in its data cache - the module-scope memo is what does the work.
+      const res = await fetch(`${API_BASE_URL}/v2/areas/index`, {
+        cache: "force-cache",
+        headers: { accept: "application/json" },
+      });
+      if (!res.ok) throw new ApiError(res.status, await readDetail(res));
+      return ((await res.json()) as AreaIndexResponse).areas;
+    })().catch((err) => {
+      allAreasPromise = null;
+      throw err;
+    });
+  }
+  return allAreasPromise;
+}
 
 export function resolvePostcode(postcode: string): Promise<ResolveResponse> {
   return getJson<ResolveResponse>(

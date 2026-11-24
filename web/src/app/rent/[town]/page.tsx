@@ -9,7 +9,16 @@ import { areaSlug } from "@/lib/slug";
 import { JsonLd } from "@/components/JsonLd";
 import { rankingJsonLd } from "@/lib/structured-data";
 
-export const revalidate = 86400;
+export const revalidate = false; // dataset only changes on redeploy: render once, cache until next deploy
+
+// Without this export Next renders the route on EVERY request and ignores
+// `revalidate` (Nov 2026 Vercel CPU burn). An empty list makes it ISR: each
+// town renders once on first visit, then is served from cache until the next
+// deploy. Not prerendered at build: 11 build workers each pulling the 13.8 MB
+// index overloads the scale-to-zero Fly API and fails the deploy.
+export async function generateStaticParams(): Promise<{ town: string }[]> {
+  return [];
+}
 
 type Props = { params: Promise<{ town: string }> };
 
